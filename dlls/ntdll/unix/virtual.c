@@ -3618,7 +3618,7 @@ TEB *virtual_alloc_first_teb(void)
     void *ptr;
     TEB *teb;
     unsigned int status;
-    SIZE_T data_size = page_size;
+    SIZE_T data_size = 0x4000;
     SIZE_T block_size = signal_stack_mask + 1;
     SIZE_T total = 32 * block_size;
 

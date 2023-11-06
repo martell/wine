@@ -48,7 +48,7 @@
 #include "wine/asm.h"
 #include "main.h"
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 /* Reserve the low 8GB using a zero-fill section, this is the only way to
  * prevent system frameworks from using any of it (including allocations
  * before any preloader code runs)
@@ -57,7 +57,7 @@ __asm__(".zerofill WINE_RESERVE,WINE_RESERVE,___wine_reserve,0x1fffff000");
 
 static const struct wine_preload_info zerofill_sections[] =
 {
-    { (void *)0x000000001000, 0x1fffff000 }, /* WINE_RESERVE section */
+    { (void *)0x000000004000, 0x1fffff000 }, /* WINE_RESERVE section */
     { 0, 0 }                                 /* end of list */
 };
 #else
@@ -254,7 +254,67 @@ __ASM_GLOBAL_FUNC( start,
                    "\tmovl $0,%ebp\n"               /* restore ebp back to zero */
                    "\tjmpl *%eax\n" )               /* jump to the entry point */
 
-#elif defined(__x86_64__)
+#elif (__aarch64__)
+
+static const size_t page_mask = 0xfff;
+#define target_mach_header      mach_header_64
+#define target_segment_command  segment_command_64
+#define TARGET_LC_SEGMENT       LC_SEGMENT_64
+#define target_thread_state_t   arm_thread_state64_t
+#ifdef __DARWIN_UNIX03
+#define target_thread_ip(x)     (x)->__pc
+#else
+#define target_thread_ip(x)     (x)->pc
+#endif
+
+// TODO: need to save the registers ?
+#define SYSCALL_FUNC( name, nr ) \
+    __ASM_GLOBAL_FUNC( name, \
+                       "\tmov x16, #" #nr "\n" \
+                       "\tsvc #0x80\n" \
+                       "\tret\n" )
+
+#define SYSCALL_NOERR( name, nr ) \
+    __ASM_GLOBAL_FUNC( name, \
+                       "\tmov x16, #" #nr "\n" \
+                       "\tsvc #0x80\n" \
+                       "\tret\n" )
+
+// __ASM_GLOBAL_FUNC( start,
+//                    __ASM_CFI("\t.cfi_undefined %rip\n")
+//                    "mov x0, SP\n\t"
+//                    "sub SP, SP, #144\n\t" /* allocate some space for extra aux values */
+//                    "str x0, [SP]\n\t"     /* orig stack pointer */
+//                 //    "adrp x0, thread_data\n\t"
+//                 //    "add x0, x0, :lo12:thread_data\n\t"
+//                    "msr tpidr_el0, x0\n\t"
+//                    "mov x0, SP\n\t"       /* ptr to orig stack pointer */
+//                    "bl __wld_start\n\t"
+//                    "ldr x1, [SP]\n\t"     /* new stack pointer */
+//                    "mov SP, x1\n\t"
+//                    "mov x30, x0\n\t"
+//                    "mov x0, #0\n\t"
+//                    "mov x1, #0\n\t"
+//                    "mov x2, #0\n\t"
+//                    "mov x3, #0\n\t"
+//                    "mov x4, #0\n\t"
+//                    "mov x5, #0\n\t"
+//                    "mov x6, #0\n\t"
+//                    "mov x7, #0\n\t"
+//                    "mov x8, #0\n\t"
+//                    "mov x9, #0\n\t"
+//                    "mov x10, #0\n\t"
+//                    "mov x11, #0\n\t"
+//                    "mov x12, #0\n\t"
+//                    "mov x13, #0\n\t"
+//                    "mov x14, #0\n\t"
+//                    "mov x15, #0\n\t"
+//                    "mov x16, #0\n\t"
+//                    "mov x17, #0\n\t"
+//                    "mov x18, #0\n\t"
+//                    "ret")
+
+#elif defined(MAC_OS_X_VERSION_10_86_64__)
 
 static const size_t page_mask = 0xfff;
 #define target_mach_header      mach_header_64

@@ -9508,17 +9508,16 @@ fi ;;
 
     SYSTEMCONFIGURATION_LIBS="-framework SystemConfiguration"
 
+    WINELOADER_LDFLAGS=" -Wl,-pie,-image_base,0x100000000,-segalign,0x4000,-pagezero_size,0x4000,-sectcreate,__TEXT,__info_plist,loader/wine_info.plist"
 
-    WINELOADER_LDFLAGS="-Wl,-pie,-segalign,0x1000,-pagezero_size,0x1000,-sectcreate,__TEXT,__info_plist,loader/wine_info.plist"
-
-    case $host_cpu in
+    case $host_cpu in # unsure if we can on aarch64 because no pie and -image_base ignored
       *i[3456]86*|*x86_64*) wine_can_build_preloader=yes ;;
       *)                      wine_can_build_preloader=no ;;
     esac
 
     if test "$wine_can_build_preloader" = "yes"
     then
-        WINEPRELOADER_LDFLAGS="-nostartfiles -nodefaultlibs -e _start -ldylib1.o -mmacosx-version-min=10.7 -Wl,-no_new_main,-segalign,0x1000,-pagezero_size,0x1000,-sectcreate,__TEXT,__info_plist,loader/wine_info.plist"
+        WINEPRELOADER_LDFLAGS="-nostartfiles -nodefaultlibs -e _start -ldylib1.o -mmacosx-version-min=11 -Wl,-no_new_main,-segalign,0x4000,-pagezero_size,0x4000,-sectcreate,__TEXT,__info_plist,loader/wine_info.plist"
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether the compiler supports -Wl,-no_pie" >&5
 printf %s "checking whether the compiler supports -Wl,-no_pie... " >&6; }
 if test ${ac_cv_cflags__Wl__no_pie+y}
@@ -9554,8 +9553,11 @@ fi
           *x86_64*)
             WINEPRELOADER_LDFLAGS="-Wl,-image_base,0x200000000,-segalign,0x1000,-segaddr,WINE_RESERVE,0x1000 $WINEPRELOADER_LDFLAGS"
             ;;
+          *aarch64*)
+            WINEPRELOADER_LDFLAGS="-Wl,-image_base,0x100000000,-segalign,0x4000,-segaddr,WINE_RESERVE,0x4000 $WINEPRELOADER_LDFLAGS"
+            ;;
         esac
-                WINELOADER_LDFLAGS="$WINELOADER_LDFLAGS -mmacosx-version-min=10.7"
+                WINELOADER_LDFLAGS="$WINELOADER_LDFLAGS -mmacosx-version-min=11"
     else
         as_fn_append wine_warnings "|can't build Wine preloader; many programs won't work"
     fi
